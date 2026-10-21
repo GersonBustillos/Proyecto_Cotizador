@@ -1,0 +1,444 @@
+{% extends 'cotizaciones/base.html' %}
+{% block title %}Nueva Cotización{% endblock %}
+{% block content %}
+<h3 class="mb-4">Nueva Cotización</h3>
+
+<form method="post" id="cotizacion-form">
+    {% csrf_token %}
+    {% if form.errors or formset.errors %}
+    <div class="alert alert-danger">
+        <strong>Hay errores en el formulario:</strong>
+        {{ form.errors }}
+        {{ formset.errors }}
+    </div>
+    {% endif %}
+    <div class="card p-4 mb-4">
+        <h5 class="mb-3">Datos de la cotización</h5>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label">Cliente</label>
+                {{ form.cliente }}
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Tipo</label>
+                {{ form.tipo }}
+            </div>
+            <div class="col-12">
+                <label class="form-label">Nombre del plan</label>
+                {{ form.plan_nombre }}
+            </div>
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center">
+                    <label class="form-label mb-0">Características</label>
+                    <button type="button" id="restaurar-auto" class="btn btn-sm btn-link text-decoration-none">↻ Restaurar automático</button>
+                </div>
+                {{ form.caracteristicas }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Contrato mínimo (meses)</label>
+                {{ form.contrato_minimo_meses }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Duración de la oferta (días)</label>
+                {{ form.duracion_oferta_dias }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Moneda</label>
+                {{ form.moneda }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Color principal del PDF</label>
+                <div class="d-flex align-items-center gap-2">
+                    {{ form.color_primario }}
+                    <button type="button" class="btn-color-preset" data-color="#1a73c1" title="Azul NUVO" style="width:28px;height:28px;border-radius:50%;background:#1a73c1;border:2px solid #fff;box-shadow:0 0 0 1px #ccc;"></button>
+                    <button type="button" class="btn-color-preset" data-color="#2E8B57" title="Verde SecPod" style="width:28px;height:28px;border-radius:50%;background:#2E8B57;border:2px solid #fff;box-shadow:0 0 0 1px #ccc;"></button>
+                    <button type="button" class="btn-color-preset" data-color="#6C2EB5" title="Morado Auvik" style="width:28px;height:28px;border-radius:50%;background:#6C2EB5;border:2px solid #fff;box-shadow:0 0 0 1px #ccc;"></button>
+                </div>
+            </div>
+            <div class="col-12">
+                <label class="form-label">Términos y Condiciones</label>
+                {{ form.terminos_condiciones }}
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Vendedores (catálogo)</label>
+                {{ form.vendedores }}
+                <small class="text-muted">Mantén Ctrl presionado para elegir varios</small>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Correos adicionales</label>
+                {{ form.correos_adicionales }}
+                <small class="text-muted">Separados por coma, para quienes no estén en el catálogo</small>
+            </div>
+        </div>
+    </div>
+
+<div class="card p-4 mb-4">
+        <h5 class="mb-3">Herramientas</h5>
+        {{ formset.management_form }}
+        <div id="items-container">
+            {% for item_form in formset %}
+            <div class="row g-2 align-items-end mb-2 item-row border-bottom pb-3">
+                <div class="col-md-3">
+                    <label class="form-label small">Herramienta</label>
+                    {{ item_form.herramienta }}
+                </div>
+                <div class="col-md-1">
+                    <label class="form-label small">Cant.</label>
+                    {{ item_form.cantidad }}
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small d-flex justify-content-between">
+                        Precio mensual
+                        <button type="button" class="btn btn-link btn-sm p-0 recargar-precio" title="Recargar precio automático">↻</button>
+                    </label>
+                    {{ item_form.precio_unit_mensual }}
+                    <div class="text-danger small precio-warning" style="display:none;"></div>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small">Precio especial</label>
+                    {{ item_form.precio_unit_especial }}
+                    <div class="text-danger small precio-especial-warning" style="display:none;"></div>
+                </div>
+                <div class="col-md-1">
+                    {% if item_form.instance.pk %}{{ item_form.DELETE }}<label class="small">Borrar</label>{% endif %}
+                </div>
+                {{ item_form.id }}
+            </div>
+            {% endfor %}
+        </div>
+        <button type="button" id="add-item" class="btn btn-sm btn-outline-primary mt-2">+ Agregar herramienta</button>
+
+        <div class="mt-3 p-3 bg-light rounded d-flex justify-content-end gap-4" id="totales-preview">
+            <div><strong>Total mensual:</strong> <span id="total-mensual-preview">0.00</span></div>
+            <div><strong>Total anual:</strong> <span id="total-anual-preview">0.00</span></div>
+        </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Guardar Cotización</button>
+</form>
+
+<template id="empty-form-template">
+    <div class="row g-2 align-items-end mb-2 item-row border-bottom pb-3">
+        <div class="col-md-3">
+            <label class="form-label small">Herramienta</label>
+            {{ formset.empty_form.herramienta }}
+        </div>
+        <div class="col-md-1">
+            <label class="form-label small">Cant.</label>
+            {{ formset.empty_form.cantidad }}
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small d-flex justify-content-between">
+                Precio mensual
+                <button type="button" class="btn btn-link btn-sm p-0 recargar-precio" title="Recargar precio automático">↻</button>
+            </label>
+            {{ formset.empty_form.precio_unit_mensual }}
+            <div class="text-danger small precio-warning" style="display:none;"></div>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small">Precio especial</label>
+            {{ formset.empty_form.precio_unit_especial }}
+            <div class="text-danger small precio-especial-warning" style="display:none;"></div>
+        </div>
+        <div class="col-md-1"></div>
+    </div>
+</template>
+
+<script>
+const clienteDataMap = {};
+let actualizandoAutomaticamente = false;
+let editadoManualmente = false;
+let terminosEditadosManualmente = false;
+
+function activarBuscadorSelect(selectEl) {
+    if (!selectEl || selectEl.dataset.choicesActivo) return;
+    new Choices(selectEl, {
+        searchEnabled: true,
+        itemSelectText: '',
+        shouldSort: false,
+        placeholder: true,
+        allowHTML: false,
+    });
+    selectEl.dataset.choicesActivo = 'true';
+}
+
+document.querySelectorAll('.btn-color-preset').forEach(btn => {
+    btn.addEventListener('click', function() {
+        document.getElementById('id_color_primario').value = this.dataset.color;
+    });
+});
+
+document.getElementById('id_caracteristicas').addEventListener('input', function() {
+    if (!actualizandoAutomaticamente) {
+        editadoManualmente = true;
+    }
+});
+
+document.getElementById('id_terminos_condiciones').addEventListener('input', function() {
+    terminosEditadosManualmente = true;
+});
+
+async function obtenerDatosCliente(clienteId) {
+    if (clienteDataMap[clienteId]) return clienteDataMap[clienteId];
+    const resp = await fetch(`/cotizaciones/api/cliente/${clienteId}/`);
+    const data = await resp.json();
+    clienteDataMap[clienteId] = data;
+    return data;
+}
+
+function regenerarCaracteristicas() {
+    if (editadoManualmente) return;
+
+    const rows = document.querySelectorAll('.item-row');
+    const bloques = [];
+    rows.forEach(row => {
+        if (row.dataset.autoTexto) {
+            bloques.push(`— ${row.dataset.autoNombre} —\n${row.dataset.autoTexto}`);
+        }
+    });
+
+    const campo = document.getElementById('id_caracteristicas');
+    actualizandoAutomaticamente = true;
+    campo.value = bloques.join('\n\n');
+    actualizandoAutomaticamente = false;
+}
+
+function actualizarTotalesPreview() {
+    let totalMensual = 0;
+    document.querySelectorAll('.item-row').forEach(row => {
+        const cantidadInput = row.querySelector('.cantidad-input');
+        const precioInput = row.querySelector('.precio-mensual-input');
+        if (!cantidadInput || !precioInput) return;
+        const cantidad = parseFloat(cantidadInput.value) || 0;
+        const precio = parseFloat(precioInput.value) || 0;
+        totalMensual += cantidad * precio;
+    });
+    const totalAnual = totalMensual * 12;
+    const formato = { minimumFractionDigits: 2, maximumFractionDigits: 2 };
+    document.getElementById('total-mensual-preview').textContent = totalMensual.toLocaleString('en-US', formato);
+    document.getElementById('total-anual-preview').textContent = totalAnual.toLocaleString('en-US', formato);
+}
+
+function validarPrecioFila(row) {
+    const precioInput = row.querySelector('.precio-mensual-input');
+    const warningDiv = row.querySelector('.precio-warning');
+    const precioLista = parseFloat(row.dataset.precioLista);
+    const precioIngresado = parseFloat(precioInput.value);
+
+    if (!precioLista || isNaN(precioIngresado)) {
+        warningDiv.style.display = 'none';
+        precioInput.classList.remove('is-invalid');
+        return true;
+    }
+
+    if (precioIngresado < precioLista) {
+        warningDiv.textContent = `Precio menor al de la lista (${precioLista.toFixed(2)}), por favor validar nuevamente.`;
+        warningDiv.style.display = 'block';
+        precioInput.classList.add('is-invalid');
+        return false;
+    } else {
+        warningDiv.style.display = 'none';
+        precioInput.classList.remove('is-invalid');
+        return true;
+    }
+}
+
+function validarPrecioEspecialFila(row) {
+    const precioInput = row.querySelector('.precio-especial-input');
+    const warningDiv = row.querySelector('.precio-especial-warning');
+    if (!precioInput || !warningDiv) return true;
+
+    const precioLista = parseFloat(row.dataset.precioListaEspecial);
+    const precioIngresado = parseFloat(precioInput.value);
+
+    if (!precioLista || isNaN(precioIngresado)) {
+        warningDiv.style.display = 'none';
+        precioInput.classList.remove('is-invalid');
+        return true;
+    }
+
+    if (precioIngresado < precioLista) {
+        warningDiv.textContent = `Precio menor al de la lista (${precioLista.toFixed(2)}), por favor validar nuevamente.`;
+        warningDiv.style.display = 'block';
+        precioInput.classList.add('is-invalid');
+        return false;
+    } else {
+        warningDiv.style.display = 'none';
+        precioInput.classList.remove('is-invalid');
+        return true;
+    }
+}
+
+async function autocompletarHerramienta(selectEl) {
+    const row = selectEl.closest('.item-row');
+    const herramientaId = selectEl.value;
+    if (!herramientaId) {
+        delete row.dataset.autoNombre;
+        delete row.dataset.autoTexto;
+        delete row.dataset.precioLista;
+        regenerarCaracteristicas();
+        return;
+    }
+
+    const cantidadInput = row.querySelector('.cantidad-input');
+    const cantidad = cantidadInput ? (parseInt(cantidadInput.value) || 1) : 1;
+
+    const contratoInput = document.getElementById('id_contrato_minimo_meses');
+    const mesesContrato = contratoInput ? (parseInt(contratoInput.value) || 12) : 12;
+
+    const url = `/cotizaciones/api/herramienta/${herramientaId}/?cantidad=${cantidad}&meses_contrato=${mesesContrato}`;
+    const resp = await fetch(url);
+    const data = await resp.json();
+    const nombreHerramienta = selectEl.options[selectEl.selectedIndex].text;
+
+    const clienteSelect = document.getElementById('id_cliente');
+    let tipoCliente = 'cliente_final';
+    if (clienteSelect && clienteSelect.value) {
+        const datosCliente = await obtenerDatosCliente(clienteSelect.value);
+        tipoCliente = datosCliente.tipo_cliente;
+    }
+
+    const precioMensual = row.querySelector('.precio-mensual-input');
+    const precioEspecial = row.querySelector('.precio-especial-input');
+
+    let precioListaMensual = '';
+    let precioListaEspecial = '';
+    if (tipoCliente === 'partner') {
+        precioMensual.value = data.precio_partner || '';
+        precioEspecial.value = '';
+        precioListaMensual = data.precio_partner || '';
+    } else if (tipoCliente === 'telco') {
+        precioMensual.value = data.precio_telco || '';
+        precioEspecial.value = '';
+        precioListaMensual = data.precio_telco || '';
+    } else {
+        precioMensual.value = data.precio_regular || '';
+        precioEspecial.value = data.precio_especial || '';
+        precioListaMensual = data.precio_regular || '';
+        precioListaEspecial = data.precio_especial || '';
+    }
+
+    row.dataset.autoNombre = nombreHerramienta;
+    row.dataset.autoTexto = data.caracteristicas || '';
+    row.dataset.precioLista = precioListaMensual;
+    row.dataset.precioListaEspecial = precioListaEspecial;
+    validarPrecioFila(row);
+    validarPrecioEspecialFila(row);
+    regenerarCaracteristicas();
+    actualizarTotalesPreview();
+}
+
+
+async function sincronizarTipoCliente() {
+    const clienteSelect = document.getElementById('id_cliente');
+    const tipoSelect = document.getElementById('id_tipo');
+    if (!clienteSelect.value) return;
+
+    const datosCliente = await obtenerDatosCliente(clienteSelect.value);
+    tipoSelect.value = datosCliente.tipo_cliente;
+
+    if (datosCliente.moneda_default) {
+        document.getElementById('id_moneda').value = datosCliente.moneda_default;
+    }
+
+    const campoTerminos = document.getElementById('id_terminos_condiciones');
+    if (!terminosEditadosManualmente && datosCliente.terminos_default) {
+        campoTerminos.value = datosCliente.terminos_default;
+    }
+
+    document.querySelectorAll('.herramienta-select').forEach(sel => {
+        if (sel.value) autocompletarHerramienta(sel);
+    });
+}
+
+
+document.getElementById('id_cliente').addEventListener('change', sincronizarTipoCliente);
+document.getElementById('restaurar-auto').addEventListener('click', function() {
+    editadoManualmente = false;
+    regenerarCaracteristicas();
+});
+
+document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('recargar-precio')) {
+        const row = e.target.closest('.item-row');
+        const select = row.querySelector('.herramienta-select');
+        if (select && select.value) {
+            autocompletarHerramienta(select);
+        }
+    }
+});
+
+document.addEventListener('change', function(e) {
+    if (e.target.classList.contains('herramienta-select')) {
+        autocompletarHerramienta(e.target);
+    }
+    if (e.target.classList.contains('cantidad-input') || e.target.classList.contains('precio-mensual-input')) {
+        actualizarTotalesPreview();
+    }
+});
+
+document.addEventListener('input', function(e) {
+    if (e.target.classList.contains('cantidad-input')) {
+        const row = e.target.closest('.item-row');
+        const select = row.querySelector('.herramienta-select');
+        if (select && select.value) {
+            autocompletarHerramienta(select);
+        }
+    }
+});
+
+document.addEventListener('input', function(e) {
+    if (e.target.classList.contains('precio-mensual-input')) {
+        validarPrecioFila(e.target.closest('.item-row'));
+    }
+    if (e.target.classList.contains('precio-especial-input')) {
+        validarPrecioEspecialFila(e.target.closest('.item-row'));
+    }
+});
+
+document.getElementById('id_contrato_minimo_meses').addEventListener('input', function() {
+    document.querySelectorAll('.herramienta-select').forEach(sel => {
+        if (sel.value) autocompletarHerramienta(sel);
+    });
+});
+
+document.addEventListener('input', function(e) {
+    if (e.target.classList.contains('cantidad-input') || e.target.classList.contains('precio-mensual-input')) {
+        actualizarTotalesPreview();
+    }
+});
+
+document.getElementById('add-item').addEventListener('click', function() {
+    const totalFormsInput = document.querySelector('#id_items-TOTAL_FORMS');
+    const formIdx = parseInt(totalFormsInput.value);
+    const template = document.getElementById('empty-form-template').innerHTML.replace(/__prefix__/g, formIdx);
+    const container = document.getElementById('items-container');
+    const div = document.createElement('div');
+    div.innerHTML = template;
+    const nuevaFila = div.firstElementChild;
+    container.appendChild(nuevaFila);
+    activarBuscadorSelect(nuevaFila.querySelector('.herramienta-select'));
+    totalFormsInput.value = formIdx + 1;
+    actualizarTotalesPreview();
+});
+
+document.getElementById('cotizacion-form').addEventListener('submit', function(e) {
+    let valido = true;
+    document.querySelectorAll('.item-row').forEach(row => {
+        if (!validarPrecioFila(row)) valido = false;
+        if (!validarPrecioEspecialFila(row)) valido = false;
+    });
+    if (!valido) {
+        e.preventDefault();
+        alert('Hay precios menores al de la lista, por favor validar nuevamente.');
+    }
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    activarBuscadorSelect(document.getElementById('id_cliente'));
+    document.querySelectorAll('.herramienta-select').forEach(sel => activarBuscadorSelect(sel));
+});
+
+
+</script>
+{% endblock %}

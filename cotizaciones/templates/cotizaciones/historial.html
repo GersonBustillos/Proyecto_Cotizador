@@ -1,0 +1,56 @@
+{% extends 'cotizaciones/base.html' %}
+{% block title %}Historial de Cotizaciones{% endblock %}
+{% block content %}
+<h3 class="mb-4">Historial de Cotizaciones</h3>
+
+<form method="get" class="row g-2 mb-4">
+    <div class="col-auto">
+        <input type="text" name="cliente" class="form-control" placeholder="Buscar cliente..." value="{{ request.GET.cliente }}">
+    </div>
+    <div class="col-auto">
+        <select name="tipo" class="form-select">
+            <option value="">Todos los tipos</option>
+            <option value="cliente_final" {% if request.GET.tipo == 'cliente_final' %}selected{% endif %}>Cliente Final</option>
+            <option value="partner" {% if request.GET.tipo == 'partner' %}selected{% endif %}>Partner</option>
+            <option value="telco" {% if request.GET.tipo == 'telco' %}selected{% endif %}>Telco</option>
+        </select>
+    </div>
+    <div class="col-auto">
+        <button class="btn btn-outline-secondary">Filtrar</button>
+    </div>
+</form>
+
+<div class="card">
+    <table class="table table-hover mb-0">
+        <thead class="table-light">
+            <tr>
+            <th>Número</th>
+            <th>Cliente</th>
+            <th>País</th>
+            <th>Tipo</th>
+            <th>Fecha</th>
+            <th>Estado</th>
+            <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for c in cotizaciones %}
+            <tr>
+                <td>{{ c.numero }}</td>
+                <td>{{ c.cliente.nombre_empresa }}</td>
+                <td>{{ c.cliente.pais.pais|default:"-" }}</td>
+                <td>{{ c.get_tipo_display }}</td>
+                <td>{{ c.fecha|date:"d/m/Y H:i" }}</td>
+                <td><span class="badge bg-secondary">{{ c.get_estado_display }}</span></td>
+                <td>
+                    <a href="{% url 'detalle_cotizacion' c.pk %}" class="btn btn-sm btn-outline-primary">Ver</a>
+                    <a href="{% url 'editar_cotizacion' c.pk %}" class="btn btn-sm btn-outline-secondary">Editar</a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7" class="text-center text-muted py-4">Todavía no hay cotizaciones.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

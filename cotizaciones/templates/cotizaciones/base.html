@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}Cotizador NUVO{% endblock %}</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/choices.js@11.1.0/public/assets/styles/choices.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f4f6f9; }
+        .navbar-brand { font-weight: bold; color: #1a73c1 !important; }
+        .card { border: none; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm mb-4">
+        <div class="container">
+            <a class="navbar-brand" href="{% url 'historial' %}">Cotizador NUVO</a>
+            <div>
+                <a href="{% url 'historial' %}" class="btn btn-outline-primary btn-sm me-2">Historial</a>
+                <a href="{% url 'nueva_cotizacion' %}" class="btn btn-primary btn-sm">+ Nueva Cotización</a>
+            </div>
+        </div>
+    </nav>
+    <div class="container pb-5">
+        {% block content %}{% endblock %}
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/choices.js@11.1.0/public/assets/scripts/choices.min.js"></script>
+</body>
+</html>

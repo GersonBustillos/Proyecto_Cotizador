@@ -1,0 +1,48 @@
+{% extends 'cotizaciones/base.html' %}
+{% block title %}{{ cotizacion.numero }}{% endblock %}
+{% block content %}
+<h3>{{ cotizacion.numero }} — {{ cotizacion.cliente.nombre_empresa }}</h3>
+<p class="text-muted">{{ cotizacion.get_tipo_display }} · {{ cotizacion.fecha|date:"d/m/Y H:i" }} · {{ cotizacion.get_estado_display }}</p>
+
+<div class="card p-4 mb-4">
+    <h5>{{ cotizacion.plan_nombre }}</h5>
+    <p style="white-space: pre-line">{{ cotizacion.caracteristicas }}</p>
+</div>
+
+<div class="card">
+    <table class="table mb-0">
+        <thead class="table-light">
+            <tr>
+                <th>Herramienta</th>
+                <th>Cant.</th>
+                <th>P. Unit Mensual</th>
+                <th>Total Mensual</th>
+                <th>Total Anual</th>
+                {% if cotizacion.tipo == 'cliente_final' %}
+                <th>P. Unit Especial</th>
+                <th>Total Mensual Especial</th>
+                <th>Total Anual Especial</th>
+                {% endif %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in cotizacion.items.all %}
+            <tr>
+                <td>{{ item.herramienta.nombre }}</td>
+                <td>{{ item.cantidad }}</td>
+                <td>{{ item.precio_unit_mensual }}</td>
+                <td>{{ item.total_mensual }}</td>
+                <td>{{ item.total_anual }}</td>
+                {% if cotizacion.tipo == 'cliente_final' %}
+                <td>{{ item.precio_unit_especial|default:"-" }}</td>
+                <td>{{ item.total_mensual_especial|default:"-" }}</td>
+                <td>{{ item.total_anual_especial|default:"-" }}</td>
+                {% endif %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+<a href="{% url 'generar_pdf' cotizacion.pk %}" class="btn btn-primary mt-3">📄 Descargar PDF</a>
+<a href="{% url 'historial' %}" class="btn btn-outline-secondary mt-3">← Volver al historial</a>
+{% endblock %}

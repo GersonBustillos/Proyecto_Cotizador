@@ -1,0 +1,15 @@
+incio servidor de cotizaciones. 
+
+.\venv\Scripts\Activate.ps1
+
+
+python manage.py runserver
+
+
+python manage.py makemigrations
+python manage.py migrate
+
+
+
+User: soportenuvo
+pass: iaoAdmin_GL01
