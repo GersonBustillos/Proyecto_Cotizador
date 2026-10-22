@@ -16,4 +16,7 @@ urlpatterns = [
     path('<int:pk>/pdf/', views.generar_pdf, name='generar_pdf'),
     path('api/herramienta/<int:pk>/', views.api_herramienta, name='api_herramienta'),
     path('api/cliente/<int:pk>/', views.api_cliente, name='api_cliente'),
+    path('<int:pk>/enviar/', views.enviar_cotizacion, name='enviar_cotizacion'),
+    path('<int:pk>/aprobar/', views.aprobar_cotizacion, name='aprobar_cotizacion'),
+    path('bandeja/', views.bandeja_aprobaciones, name='bandeja_aprobaciones'),
 ]

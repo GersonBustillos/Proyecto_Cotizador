@@ -215,6 +215,24 @@ class Cotizacion(models.Model):
         'auth.User', on_delete=models.PROTECT, null=True, blank=True,
         related_name='cotizaciones_creadas'
     )
+    # --- NUEVOS CAMPOS PARA EL FLUJO DE APROBACIÓN ---
+    NIVEL_APROBACION_CHOICES = [
+        ('pendiente', 'Pendiente de Aprobación (Nivel 1)'),
+        ('nivel_1', 'Aprobado por Jefe Comercial (Pasa a Nivel 2)'),
+        ('nivel_2', 'Aprobado por Jefe de Cotizaciones (Pasa a Nivel 3)'),
+        ('nivel_3', 'Aprobado por Gerencia General (Final)'),
+        ('rechazado', 'Rechazado'),
+    ]
+    nivel_aprobacion = models.CharField(
+        max_length=20, 
+        choices=NIVEL_APROBACION_CHOICES, 
+        default='pendiente',
+        help_text="Indica en qué nivel del flujo de aprobación se encuentra"
+    )
+    comentarios_aprobacion = models.TextField(
+        blank=True, 
+        help_text="Observaciones o motivos de rechazo del aprobador"
+    )
 
     def generar_numero(self):
         import re

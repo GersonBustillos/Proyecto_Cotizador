@@ -98,9 +98,25 @@
         }
         .footer .icono-circulo svg { width: 14px; height: 14px; }
         body { margin-bottom: 4cm; padding-left: 1.5cm; padding-right: 1.5cm; }
+    /* Marca de agua para cotizaciones no aprobadas */
+    .marca-agua {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) rotate(-45deg);
+        font-size: 100px;
+        color: rgba(200, 0, 0, 0.15); /* Rojo transparente */
+        font-weight: bold;
+        z-index: 9999;
+        pointer-events: none;
+        white-space: nowrap;
+    }
 </style>
 </head>
 <body>
+    {% if cotizacion.nivel_aprobacion != 'nivel_3' and cotizacion.estado != 'aprobada' %}
+        <div class="marca-agua">NO APROBADO</div>
+    {% endif %}
 
 <div class="header">
     <div>

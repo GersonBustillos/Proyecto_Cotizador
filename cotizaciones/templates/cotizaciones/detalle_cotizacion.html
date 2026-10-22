@@ -2,7 +2,11 @@
 {% block title %}{{ cotizacion.numero }}{% endblock %}
 {% block content %}
 <h3>{{ cotizacion.numero }} — {{ cotizacion.cliente.nombre_empresa }}</h3>
-<p class="text-muted">{{ cotizacion.get_tipo_display }} · {{ cotizacion.fecha|date:"d/m/Y H:i" }} · {{ cotizacion.get_estado_display }}</p>
+<p class="text-muted">
+    {{ cotizacion.get_tipo_display }} · {{ cotizacion.fecha|date:"d/m/Y H:i" }} · 
+    <span class="badge bg-secondary">{{ cotizacion.get_estado_display }}</span> · 
+    <span class="badge bg-warning text-dark">{{ cotizacion.get_nivel_aprobacion_display }}</span>
+</p>
 
 <div class="card p-4 mb-4">
     <h5>{{ cotizacion.plan_nombre }}</h5>
@@ -43,6 +47,39 @@
         </tbody>
     </table>
 </div>
-<a href="{% url 'generar_pdf' cotizacion.pk %}" class="btn btn-primary mt-3">📄 Descargar PDF</a>
-<a href="{% url 'historial' %}" class="btn btn-outline-secondary mt-3">← Volver al historial</a>
+
+<!-- PANEL DE APROBACIONES -->
+<div class="card p-4 mb-4 border-warning">
+    <h5 class="text-warning mb-3">🛡️ Panel de Aprobaciones</h5>
+    <p>Estado actual: <strong>{{ cotizacion.get_nivel_aprobacion_display }}</strong></p>
+    
+    {% if cotizacion.comentarios_aprobacion %}
+        <div class="alert alert-info py-2">
+            <strong>Comentarios:</strong> {{ cotizacion.comentarios_aprobacion }}
+        </div>
+    {% endif %}
+
+    {% if cotizacion.nivel_aprobacion == 'pendiente' or cotizacion.nivel_aprobacion == 'nivel_1' or cotizacion.nivel_aprobacion == 'nivel_2' %}
+        <a href="{% url 'aprobar_cotizacion' cotizacion.pk %}" class="btn btn-warning">Gestionar Aprobación / Revisión</a>
+    {% endif %}
+</div>
+
+<!-- BOTONES DE ACCIÓN -->
+<div class="mt-4 d-flex gap-2 align-items-center">
+    
+    <!-- BOTÓN DE PDF: Visible para todos (los que pueden entrar a la vista), pero el PDF tendrá marca de agua -->
+    <a href="{% url 'generar_pdf' cotizacion.pk %}" class="btn btn-primary">📄 Ver / Descargar PDF</a>
+
+    <!-- BOTÓN DE CORREO: Solo visible si está aprobado por Gerencia (o si eres superusuario) -->
+    {% if cotizacion.nivel_aprobacion == 'nivel_3' or cotizacion.estado == 'aprobada' or request.user.is_superuser %}
+        <a href="{% url 'enviar_cotizacion' cotizacion.pk %}" class="btn btn-success" onclick="return confirm('¿Seguro que deseas enviar esta cotización por correo?');">✉️ Enviar por Correo</a>
+    {% else %}
+        <div class="alert alert-secondary py-2 mb-0">
+            <small>🔒 El envío al cliente se habilitará cuando Gerencia apruebe la cotización.</small>
+        </div>
+    {% endif %}
+    
+    <a href="{% url 'historial' %}" class="btn btn-outline-secondary ms-auto">← Volver al historial</a>
+</div>
+
 {% endblock %}

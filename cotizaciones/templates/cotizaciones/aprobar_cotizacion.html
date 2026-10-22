@@ -1,0 +1,31 @@
+{% extends 'cotizaciones/base.html' %}
+{% block title %}Aprobar Cotización{% endblock %}
+{% block content %}
+<div class="container" style="max-width: 800px;">
+    <div class="card p-4 shadow-sm">
+        <h3 class="mb-3">Revisión: {{ cotizacion.numero }}</h3>
+        <p><strong>Cliente:</strong> {{ cotizacion.cliente.nombre_empresa }}</p>
+        <p><strong>Plan:</strong> {{ cotizacion.plan_nombre }}</p>
+        <p><strong>Nivel actual en el sistema:</strong> {{ cotizacion.get_nivel_aprobacion_display }}</p>
+        <hr>
+        <form method="post">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label class="form-label">Comentarios (Obligatorio si rechazas)</label>
+                <textarea name="comentario" class="form-control" rows="3" placeholder="Escribe aquí las observaciones...">{{ cotizacion.comentarios_aprobacion }}</textarea>
+            </div>
+            
+            <div class="d-flex gap-2">
+                <button type="submit" name="accion" value="aprobar" class="btn btn-success">✅ Aprobar</button>
+                
+                {% if nivel_actual == 'nivel_2' %}
+                    <button type="submit" name="accion" value="escalar" class="btn btn-info text-white">⬆️ Escalar a Gerencia</button>
+                {% endif %}
+                
+                <button type="submit" name="accion" value="rechazar" class="btn btn-danger" onclick="return confirm('¿Seguro que deseas rechazar?');">❌ Rechazar</button>
+                <a href="{% url 'detalle_cotizacion' cotizacion.pk %}" class="btn btn-secondary">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

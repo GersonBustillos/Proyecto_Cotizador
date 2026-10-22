@@ -1,24 +1,16 @@
-{% extends 'cotizaciones/base_login.html' %}
-{% block content %}
-<div class="d-flex justify-content-center align-items-center" style="min-height: 80vh;">
-    <div class="card p-4 shadow-sm" style="width: 380px;">
-        <h4 class="mb-3 text-center">Cotizador NUVO</h4>
-        {% if form.errors %}
-        <div class="alert alert-danger py-2">Usuario o contraseña incorrectos.</div>
-        {% endif %}
-        <form method="post">
-            {% csrf_token %}
-            <div class="mb-3">
-                <label class="form-label">Usuario</label>
-                <input type="text" name="username" class="form-control" required autofocus>
-            </div>
-            <div class="mb-3">
-                <label class="form-label">Contraseña</label>
-                <input type="password" name="password" class="form-control" required>
-            </div>
-            <input type="hidden" name="next" value="{{ next }}">
-            <button type="submit" class="btn btn-primary w-100">Ingresar</button>
-        </form>
-    </div>
-</div>
-{% endblock %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}Cotizador NUVO{% endblock %}</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f4f6f9; }
+        .card { border: none; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+    </style>
+</head>
+<body>
+    {% block content %}{% endblock %}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

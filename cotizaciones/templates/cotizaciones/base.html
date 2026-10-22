@@ -14,14 +14,69 @@
 <body>
     <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm mb-4">
         <div class="container">
+            <!-- Logo a la izquierda -->
             <a class="navbar-brand" href="{% url 'historial' %}">Cotizador NUVO</a>
-            <div>
+            
+            <!-- Botones a la derecha -->
+            <div class="d-flex align-items-center">
                 <a href="{% url 'historial' %}" class="btn btn-outline-primary btn-sm me-2">Historial</a>
-                <a href="{% url 'nueva_cotizacion' %}" class="btn btn-primary btn-sm">+ Nueva Cotización</a>
+                <a href="{% url 'nueva_cotizacion' %}" class="btn btn-primary btn-sm me-3">+ Nueva Cotización</a>
+                
+                {% if user.is_authenticated %}
+                
+                <!-- CAMPANA DE NOTIFICACIONES -->
+                {% if notificaciones_count > 0 %}
+                <a href="{% url 'bandeja_aprobaciones' %}" class="btn btn-light position-relative me-3 text-warning" title="Tienes {{ notificaciones_count }} aprobaciones pendientes">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" class="bi bi-bell-fill" viewBox="0 0 16 16">
+                      <path d="M8 16a2 2 0 0 0 2-2H6a2 2 0 0 0 2 2zm.995-14.901a1 1 0 1 0-1.99 0A5.002 5.002 0 0 0 3 6c0 1.098-.5 6-2 7h14c-1.5-1-2-5.902-2-7 0-2.42-1.72-4.44-4.005-4.901z"/>
+                    </svg>
+                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                        {{ notificaciones_count }}
+                    </span>
+                </a>
+                {% endif %}
+
+                <!-- Perfil de Usuario y Cerrar Sesión -->
+                <div class="dropdown border-start ps-3">
+                    <button class="btn btn-link text-decoration-none text-dark dropdown-toggle d-flex align-items-center gap-2" type="button" id="dropdownMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
+                        <!-- Icono de usuario redondo con la inicial -->
+                        <div class="bg-primary text-white rounded-circle d-flex justify-content-center align-items-center" style="width: 32px; height: 32px; font-weight: bold;">
+                            {{ user.username|first|upper }}
+                        </div>
+                        <span class="fw-bold">{{ user.username }}</span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="dropdownMenuButton">
+                        <li><h6 class="dropdown-header">Sesión iniciada como:</h6></li>
+                        <li><span class="dropdown-item text-muted">{{ user.get_full_name|default:user.username }}</span></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <!-- Formulario para cerrar sesión de forma segura -->
+                            <form method="post" action="{% url 'logout' %}" class="m-0">
+                                {% csrf_token %}
+                                <button type="submit" class="dropdown-item text-danger fw-bold">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-box-arrow-right me-1" viewBox="0 0 16 16">
+                                      <path fill-rule="evenodd" d="M10 12.5a.5.5 0 0 1-.5.5h-8a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5h8a.5.5 0 0 1 .5.5v2a.5.5 0 0 0 1 0v-2A1.5 1.5 0 0 0 9.5 2h-8A1.5 1.5 0 0 0 0 3.5v9A1.5 1.5 0 0 0 1.5 14h8a1.5 1.5 0 0 0 1.5-1.5v-2a.5.5 0 0 0-1 0z"/>
+                                      <path fill-rule="evenodd" d="M15.854 8.354a.5.5 0 0 0 0-.708l-3-3a.5.5 0 0 0-.708.708L14.293 7.5H5.5a.5.5 0 0 0 0 1h8.793l-2.147 2.146a.5.5 0 0 0 .708.708z"/>
+                                    </svg>
+                                    Cerrar Sesión
+                                </button>
+                            </form>
+                        </li>
+                    </ul>
+                </div>
+                {% endif %}
             </div>
         </div>
     </nav>
     <div class="container pb-5">
+            {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show mt-3" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
         {% block content %}{% endblock %}
     </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>

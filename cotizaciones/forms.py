@@ -29,16 +29,19 @@ class ItemCotizacionForm(forms.ModelForm):
         model = ItemCotizacion
         fields = ['herramienta', 'cantidad', 'precio_unit_mensual', 'precio_unit_especial']
         widgets = {
-            'herramienta': forms.Select(attrs={'class': 'form-select herramienta-select'}),
-            'cantidad': forms.NumberInput(attrs={'class': 'form-control cantidad-input'}),
-            'precio_unit_mensual': forms.NumberInput(attrs={'class': 'form-control precio-mensual-input', 'step': '0.01'}),
-            'precio_unit_especial': forms.NumberInput(attrs={'class': 'form-control precio-especial-input', 'step': '0.01'}),
+            # Aquí están los 'required': False que te mencioné para evitar el error de la fila vacía
+            'herramienta': forms.Select(attrs={'class': 'form-select herramienta-select', 'required': False}),
+            'cantidad': forms.NumberInput(attrs={'class': 'form-control cantidad-input', 'required': False}),
+            'precio_unit_mensual': forms.NumberInput(attrs={'class': 'form-control precio-mensual-input', 'step': '0.01', 'required': False}),
+            'precio_unit_especial': forms.NumberInput(attrs={'class': 'form-control precio-especial-input', 'step': '0.01', 'required': False}),
         }
 
 
 ItemCotizacionFormSet = inlineformset_factory(
     Cotizacion, ItemCotizacion,
     form=ItemCotizacionForm,
-    extra=1, can_delete=True
+    extra=1, 
+    can_delete=True,
+    validate_min=False,
+    min_num=0
 )
-

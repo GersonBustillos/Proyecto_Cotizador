@@ -1,0 +1,42 @@
+{% extends 'cotizaciones/base.html' %}
+{% block title %}Bandeja de Aprobaciones{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3>📥 {{ titulo_bandeja }}</h3>
+    <span class="badge bg-danger fs-6">{{ cotizaciones.count }} pendientes</span>
+</div>
+
+<div class="card">
+    <table class="table table-hover mb-0">
+        <thead class="table-light">
+            <tr>
+                <th>Número</th>
+                <th>Cliente</th>
+                <th>Plan</th>
+                <th>Fecha</th>
+                <th>Acción</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for c in cotizaciones %}
+            <tr>
+                <td><strong>{{ c.numero }}</strong></td>
+                <td>{{ c.cliente.nombre_empresa }}</td>
+                <td>{{ c.plan_nombre }}</td>
+                <td>{{ c.fecha|date:"d/m/Y H:i" }}</td>
+                <td>
+                    <!-- Este botón los lleva al detalle para que puedan aprobar -->
+                    <a href="{% url 'detalle_cotizacion' c.pk %}" class="btn btn-sm btn-warning">Revisar y Aprobar</a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5" class="text-center text-muted py-4">
+                    🎉 ¡No tienes cotizaciones pendientes por aprobar!
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

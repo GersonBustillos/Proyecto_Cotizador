@@ -2,11 +2,19 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
 from .models import Cotizacion, Herramienta, Cliente
 from .forms import CotizacionForm, ItemCotizacionFormSet
+from django.core.mail import EmailMessage
+from django.conf import settings
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 
 
 def nueva_cotizacion(request, pk=None):
     if pk:
         cotizacion_existente = get_object_or_404(Cotizacion, pk=pk)
+        # NUEVO: BLOQUEO DE EDICIÓN POR FLUJO DE APROBACIÓN
+        if cotizacion_existente.nivel_aprobacion not in ['pendiente', 'rechazado'] and not request.user.groups.filter(name='Gerencia General').exists():
+            messages.error(request, "Esta cotización está en proceso de aprobación y no puede ser editada.")
+            return redirect('detalle_cotizacion', pk=pk)
     else:
         cotizacion_existente = None
 
@@ -19,17 +27,32 @@ def nueva_cotizacion(request, pk=None):
             cotizacion.save()
             form.save_m2m()
             formset = ItemCotizacionFormSet(request.POST, instance=cotizacion)
+            
             if formset.is_valid():
                 errores_precio = []
+                items_guardados = 0
+                
                 for item_form in formset:
-                    if not item_form.cleaned_data or item_form.cleaned_data.get('DELETE'):
+                    # 1. Ignorar si la fila está marcada para borrar
+                    if item_form.cleaned_data.get('DELETE'):
                         continue
+                        
                     herramienta = item_form.cleaned_data.get('herramienta')
                     cantidad = item_form.cleaned_data.get('cantidad')
                     precio_ingresado = item_form.cleaned_data.get('precio_unit_mensual')
-                    if not herramienta or not cantidad or precio_ingresado is None:
+                    
+                    # 2. Si la fila está TOTALMENTE vacía, la ignoramos (es la fila extra)
+                    if not herramienta and not cantidad and precio_ingresado is None:
                         continue
-
+                        
+                    # 3. SEGURIDAD: Si no está totalmente vacía, DEBE tener todos los datos
+                    if not herramienta or not cantidad or precio_ingresado is None:
+                        errores_precio.append("Hay una herramienta a la que le falta la cantidad o el precio mensual.")
+                        continue
+                        
+                    items_guardados += 1
+                    
+                    # 4. Validar precios contra la lista (tu lógica original)
                     rango = herramienta.rango_para_cantidad(cantidad, cotizacion.contrato_minimo_meses)
                     if not rango:
                         continue
@@ -56,9 +79,11 @@ def nueva_cotizacion(request, pk=None):
                                 f"{herramienta.nombre}: precio especial {precio_especial_ingresado} es menor al precio de lista {precio_lista_especial} para este rango."
                             )
 
+                # 5. Verificamos que no haya errores y que al menos haya una herramienta
+                if not errores_precio and items_guardados == 0:
+                    errores_precio.append("Debes agregar al menos una herramienta válida a la cotización.")
+
                 if errores_precio:
-                    for error in errores_precio:
-                        formset.errors  # fuerza evaluación de errors ya generado
                     form.add_error(None, "No se puede guardar: " + " | ".join(errores_precio))
                 else:
                     formset.save()
@@ -74,6 +99,12 @@ def nueva_cotizacion(request, pk=None):
     else:
         form = CotizacionForm(instance=cotizacion_existente)
         formset = ItemCotizacionFormSet(instance=cotizacion_existente)
+
+    # NUEVO: Forzar que los campos de la fila extra vacía no sean obligatorios en el HTML
+    if formset:
+        for item_form in formset:
+            for field in item_form.fields.values():
+                field.required = False
 
     return render(request, 'cotizaciones/nueva_cotizacion.html', {
         'form': form,
@@ -158,6 +189,17 @@ def generar_pdf(request, pk):
     import unicodedata
 
     cotizacion = get_object_or_404(Cotizacion, pk=pk)
+    # NUEVO: Bloqueo de seguridad
+    # Si no está aprobado, solo puede verlo si está en los grupos de aprobación o si es el creador
+    grupos_aprobadores = ['Jefe Comercial', 'Jefe Cotizaciones', 'Gerencia General']
+    es_aprobador = request.user.groups.filter(name__in=grupos_aprobadores).exists()
+    es_creador = cotizacion.creado_por == request.user
+    
+    if cotizacion.nivel_aprobacion != 'nivel_3' and not (es_aprobador or es_creador or request.user.is_superuser):
+        messages.error(request, "No tienes permiso para ver esta cotización.")
+        return redirect('historial')
+
+
     caracteristicas_lista = [linea.strip() for linea in cotizacion.caracteristicas.split('\n') if linea.strip()]
 
     logo_path = Path(settings.BASE_DIR, 'cotizaciones', 'static', 'cotizaciones', 'img', 'logo.png').as_uri()
@@ -181,3 +223,144 @@ def generar_pdf(request, pk):
     response['Content-Disposition'] = f'attachment; filename="{nombre_archivo}"'
     return response
 # Create your views here.
+@login_required
+def enviar_cotizacion(request, pk):
+    cotizacion = get_object_or_404(Cotizacion, pk=pk)
+        # NUEVO: BLOQUEO DE SEGURIDAD
+    # Si la cotización no está aprobada (nivel 3), no se puede enviar.
+    # (A menos que seas el superusuario o de Gerencia, si quieres dar esa excepción).
+    if cotizacion.nivel_aprobacion != 'nivel_3' and not request.user.is_superuser:
+        messages.error(request, "No puedes enviar esta cotización porque aún no ha sido aprobada por Gerencia General.")
+        return redirect('detalle_cotizacion', pk=cotizacion.pk)
+    # 1. Recolectar destinatarios
+    destinatarios = [v.email for v in cotizacion.vendedores.all() if v.email]
+    
+    if cotizacion.correos_adicionales:
+        extras = [c.strip() for c in cotizacion.correos_adicionales.split(',') if c.strip()]
+        destinatarios.extend(extras)
+        
+    if not destinatarios:
+        messages.error(request, "No hay correos configurados para enviar esta cotización.")
+        return redirect('detalle_cotizacion', pk=cotizacion.pk)
+
+    # 2. Generar el PDF (reutilizamos la lógica de tu vista generar_pdf)
+    # Para no duplicar código, extraemos el PDF de la vista original
+    import re
+    import unicodedata
+    from weasyprint import HTML
+    from pathlib import Path
+    
+    caracteristicas_lista = [linea.strip() for linea in cotizacion.caracteristicas.split('\n') if linea.strip()]
+    logo_path = Path(settings.BASE_DIR, 'cotizaciones', 'static', 'cotizaciones', 'img', 'logo.png').as_uri()
+
+    html_string = render(request, 'cotizaciones/pdf_cotizacion.html', {
+        'cotizacion': cotizacion,
+        'caracteristicas_lista': caracteristicas_lista,
+        'logo_path': logo_path,
+    }).content.decode('utf-8')
+
+    pdf_file = HTML(string=html_string, base_url=request.build_absolute_uri()).write_pdf()
+
+    # 3. Armar y enviar el correo
+    asunto = f"Cotización {cotizacion.numero} - {cotizacion.cliente.nombre_empresa}"
+    cuerpo = f"Estimados,\n\nAdjunto encontrarán la cotización {cotizacion.numero} correspondiente al plan: {cotizacion.plan_nombre}.\n\nQuedamos atentos a sus comentarios.\n\nSaludos cordiales,\nEquipo NUVO"
+    
+    email = EmailMessage(
+        asunto,
+        cuerpo,
+        settings.DEFAULT_FROM_EMAIL,
+        destinatarios,
+    )
+    
+    # Nombre del archivo
+    def limpiar(texto):
+        texto = unicodedata.normalize('NFKD', texto).encode('ascii', 'ignore').decode('ascii')
+        return re.sub(r'[^A-Za-z0-9]', '', texto)
+    
+    cliente_limpio = limpiar(cotizacion.cliente.nombre_empresa)
+    nombre_archivo = f"Cotizacion-{cotizacion.pk:04d}-{cliente_limpio}-{cotizacion.numero}.pdf"
+    
+    email.attach(nombre_archivo, pdf_file, 'application/pdf')
+    email.send()
+
+    # 4. Actualizar estado en la base de datos
+    cotizacion.estado = 'enviada'
+    cotizacion.correo_enviado = True
+    cotizacion.save(update_fields=['estado', 'correo_enviado'])
+
+    messages.success(request, f"La cotización fue enviada exitosamente a: {', '.join(destinatarios)}")
+    return redirect('detalle_cotizacion', pk=cotizacion.pk)
+
+@login_required
+def aprobar_cotizacion(request, pk):
+    cotizacion = get_object_or_404(Cotizacion, pk=pk)
+
+    if request.user.groups.filter(name='Jefe Comercial').exists():
+        nivel_actual = 'nivel_1'
+    elif request.user.groups.filter(name='Jefe Cotizaciones').exists():
+        nivel_actual = 'nivel_2'
+    elif request.user.groups.filter(name='Gerencia General').exists():
+        nivel_actual = 'nivel_3'
+    else:
+        messages.error(request, "No tienes permisos para aprobar cotizaciones.")
+        return redirect('historial')
+
+    if request.method == 'POST':
+        accion = request.POST.get('accion')
+        comentario = request.POST.get('comentario', '')
+        
+        # Validar que el nivel que intenta aprobar sea el correcto
+        if cotizacion.nivel_aprobacion != 'pendiente' and nivel_actual == 'nivel_1':
+             messages.error(request, "Esta cotización ya pasó el Nivel 1.")
+             return redirect('detalle_cotizacion', pk=pk)
+             
+        if accion == 'aprobar':
+            cotizacion.nivel_aprobacion = nivel_actual
+            if nivel_actual == 'nivel_3':
+                cotizacion.estado = 'aprobada'
+            messages.success(request, f"¡Aprobación registrada en el {nivel_actual.replace('_', ' ').title()}!")
+            
+        elif accion == 'escalar':
+            if nivel_actual == 'nivel_2':
+                cotizacion.nivel_aprobacion = 'nivel_2' # Se queda en nivel 2 pero listo para nivel 3
+                messages.info(request, "Cotización escalada a Gerencia General.")
+            else:
+                messages.warning(request, "Solo el Jefe de Cotizaciones puede escalar a Gerencia.")
+                return redirect('detalle_cotizacion', pk=pk)
+                
+        elif accion == 'rechazar':
+            cotizacion.nivel_aprobacion = 'rechazado'
+            cotizacion.estado = 'rechazada'
+            messages.error(request, "Cotización rechazada.")
+            
+        cotizacion.comentarios_aprobacion = comentario
+        cotizacion.save()
+        return redirect('detalle_cotizacion', pk=pk)
+
+    return render(request, 'cotizaciones/aprobar_cotizacion.html', {
+        'cotizacion': cotizacion,
+        'nivel_actual': nivel_actual
+    })
+@login_required
+def bandeja_aprobaciones(request):
+    # 1. Verificar el rol del usuario
+    if request.user.groups.filter(name='Jefe Comercial').exists():
+        nivel = 'pendiente' # Esperan su aprobación (Nivel 1)
+        titulo = 'Bandeja: Jefe Comercial (Nivel 1)'
+    elif request.user.groups.filter(name='Jefe Cotizaciones').exists():
+        nivel = 'nivel_1' # Esperan su aprobación (Nivel 2)
+        titulo = 'Bandeja: Jefe de Cotizaciones (Nivel 2)'
+    elif request.user.groups.filter(name='Gerencia General').exists():
+        nivel = 'nivel_2' # Esperan su aprobación (Nivel 3)
+        titulo = 'Bandeja: Gerencia General (Nivel 3)'
+    else:
+        messages.error(request, "No tienes permisos para acceder a la bandeja de aprobaciones.")
+        return redirect('historial')
+
+    # 2. Filtrar las cotizaciones que están en el nivel correspondiente
+    cotizaciones_pendientes = Cotizacion.objects.filter(nivel_aprobacion=nivel).order_by('-fecha')
+
+    return render(request, 'cotizaciones/bandeja_aprobaciones.html', {
+        'cotizaciones': cotizaciones_pendientes,
+        'titulo_bandeja': titulo
+    })

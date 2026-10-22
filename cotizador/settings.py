@@ -62,6 +62,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'cotizaciones.context_processors.notificaciones_aprobacion',
             ],
         },
     },
@@ -122,11 +123,9 @@ STATICFILES_DIRS = [BASE_DIR / 'cotizaciones' / 'static']
 # Email
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
 
-MAILERS = {
-    'default': {
-        'BACKEND': 'django.core.mail.backends.console.EmailBackend',
-    },
-}
+# Email
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+DEFAULT_FROM_EMAIL = 'cotizaciones@nuvomsp.com'  # Cambia esto por tu correo real
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'historial'
 LOGOUT_REDIRECT_URL = 'login'
