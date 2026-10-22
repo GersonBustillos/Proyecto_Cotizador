@@ -11,8 +11,11 @@ from django.contrib.auth.decorators import login_required
 def nueva_cotizacion(request, pk=None):
     if pk:
         cotizacion_existente = get_object_or_404(Cotizacion, pk=pk)
-        # NUEVO: BLOQUEO DE EDICIÓN POR FLUJO DE APROBACIÓN
-        if cotizacion_existente.nivel_aprobacion not in ['pendiente', 'rechazado'] and not request.user.groups.filter(name='Gerencia General').exists():
+        # NUEVO: Permitir editar si está pendiente/rechazada, O si eres el creador, O si eres Gerencia/Superusuario
+        es_gerencia = request.user.groups.filter(name='Gerencia General').exists() or request.user.is_superuser
+        es_creador = cotizacion_existente.creado_por == request.user
+        
+        if cotizacion_existente.nivel_aprobacion not in ['pendiente', 'rechazado'] and not es_gerencia and not es_creador:
             messages.error(request, "Esta cotización está en proceso de aprobación y no puede ser editada.")
             return redirect('detalle_cotizacion', pk=pk)
     else:
@@ -24,6 +27,12 @@ def nueva_cotizacion(request, pk=None):
             cotizacion = form.save(commit=False)
             if not cotizacion.pk:
                 cotizacion.creado_por = request.user
+            else:
+                # Si se está editando una cotización ya aprobada, se reinicia el flujo
+                if cotizacion.nivel_aprobacion == 'nivel_3':
+                    cotizacion.nivel_aprobacion = 'pendiente'
+                    cotizacion.estado = 'borrador'
+                    messages.warning(request, "La cotización fue modificada. Requiere una nueva aprobación.")
             cotizacion.save()
             form.save_m2m()
             formset = ItemCotizacionFormSet(request.POST, instance=cotizacion)
@@ -292,6 +301,7 @@ def enviar_cotizacion(request, pk):
     return redirect('detalle_cotizacion', pk=cotizacion.pk)
 
 @login_required
+@login_required
 def aprobar_cotizacion(request, pk):
     cotizacion = get_object_or_404(Cotizacion, pk=pk)
 
@@ -315,15 +325,21 @@ def aprobar_cotizacion(request, pk):
              return redirect('detalle_cotizacion', pk=pk)
              
         if accion == 'aprobar':
-            cotizacion.nivel_aprobacion = nivel_actual
-            if nivel_actual == 'nivel_3':
+            # REGLA: Si el Jefe de Cotizaciones (nivel 2) aprueba, se convierte en APROBADA FINAL.
+            if nivel_actual == 'nivel_2':
+                cotizacion.nivel_aprobacion = 'nivel_3'
                 cotizacion.estado = 'aprobada'
-            messages.success(request, f"¡Aprobación registrada en el {nivel_actual.replace('_', ' ').title()}!")
+                messages.success(request, "¡Cotización aprobada definitivamente por el Jefe de Cotizaciones!")
+            else:
+                cotizacion.nivel_aprobacion = nivel_actual
+                if nivel_actual == 'nivel_3':
+                    cotizacion.estado = 'aprobada'
+                messages.success(request, f"¡Aprobación registrada en el {nivel_actual.replace('_', ' ').title()}!")
             
         elif accion == 'escalar':
             if nivel_actual == 'nivel_2':
                 cotizacion.nivel_aprobacion = 'nivel_2' # Se queda en nivel 2 pero listo para nivel 3
-                messages.info(request, "Cotización escalada a Gerencia General.")
+                messages.info(request, "Cotización escalada a Gerencia General para revisión excepcional.")
             else:
                 messages.warning(request, "Solo el Jefe de Cotizaciones puede escalar a Gerencia.")
                 return redirect('detalle_cotizacion', pk=pk)
@@ -341,26 +357,40 @@ def aprobar_cotizacion(request, pk):
         'cotizacion': cotizacion,
         'nivel_actual': nivel_actual
     })
+
+
 @login_required
 def bandeja_aprobaciones(request):
-    # 1. Verificar el rol del usuario
+    # 1. Determinar el rol del usuario y los estados que le corresponden
     if request.user.groups.filter(name='Jefe Comercial').exists():
-        nivel = 'pendiente' # Esperan su aprobación (Nivel 1)
-        titulo = 'Bandeja: Jefe Comercial (Nivel 1)'
+        estados_pendientes = ['pendiente']
+        estados_historial = ['nivel_1', 'nivel_2', 'nivel_3', 'rechazado']
+        titulo = 'Jefe Comercial (Nivel 1)'
     elif request.user.groups.filter(name='Jefe Cotizaciones').exists():
-        nivel = 'nivel_1' # Esperan su aprobación (Nivel 2)
-        titulo = 'Bandeja: Jefe de Cotizaciones (Nivel 2)'
+        estados_pendientes = ['nivel_1']
+        estados_historial = ['nivel_2', 'nivel_3', 'rechazado']
+        titulo = 'Jefe de Cotizaciones (Nivel 2)'
     elif request.user.groups.filter(name='Gerencia General').exists():
-        nivel = 'nivel_2' # Esperan su aprobación (Nivel 3)
-        titulo = 'Bandeja: Gerencia General (Nivel 3)'
+        estados_pendientes = ['nivel_2']
+        estados_historial = ['nivel_3', 'rechazado']
+        titulo = 'Gerencia General (Nivel 3)'
     else:
         messages.error(request, "No tienes permisos para acceder a la bandeja de aprobaciones.")
         return redirect('historial')
 
-    # 2. Filtrar las cotizaciones que están en el nivel correspondiente
-    cotizaciones_pendientes = Cotizacion.objects.filter(nivel_aprobacion=nivel).order_by('-fecha')
+    # 2. Ver qué pestaña quiere ver el usuario (pendientes por defecto)
+    vista = request.GET.get('vista', 'pendientes')
+    
+    if vista == 'historial':
+        cotizaciones = Cotizacion.objects.filter(nivel_aprobacion__in=estados_historial).order_by('-fecha')
+        es_historial = True
+    else:
+        cotizaciones = Cotizacion.objects.filter(nivel_aprobacion__in=estados_pendientes).order_by('-fecha')
+        es_historial = False
 
     return render(request, 'cotizaciones/bandeja_aprobaciones.html', {
-        'cotizaciones': cotizaciones_pendientes,
-        'titulo_bandeja': titulo
+        'cotizaciones': cotizaciones,
+        'titulo_bandeja': titulo,
+        'es_historial': es_historial,
+        'vista_actual': vista
     })
