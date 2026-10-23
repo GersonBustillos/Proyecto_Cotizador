@@ -13,3 +13,10 @@ python manage.py migrate
 
 User: soportenuvo
 pass: iaoAdmin_GL01
+
+User: JEFE1
+pass: @Jefnuvo01
+
+User: vendedor1
+pass: @Vennuvo01
+

@@ -1,54 +1,110 @@
 {% extends 'cotizaciones/base.html' %}
 {% block title %}Historial de Cotizaciones{% endblock %}
 {% block content %}
-<h3 class="mb-4">Historial de Cotizaciones</h3>
 
-<form method="get" class="row g-2 mb-4">
-    <div class="col-auto">
-        <input type="text" name="cliente" class="form-control" placeholder="Buscar cliente..." value="{{ request.GET.cliente }}">
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="mb-0">Historial de Cotizaciones</h3>
+    <div class="d-flex gap-2 align-items-center">
+        <span class="badge bg-primary fs-6">{{ total_resultados }} resultados</span>
+        <!-- NUEVO BOTÓN DE EXPORTAR -->
+        <a href="{% url 'exportar_excel' %}?{{ request.GET.urlencode }}" class="btn btn-success btn-sm">
+            📥 Exportar a Excel
+        </a>
     </div>
-    <div class="col-auto">
-        <select name="tipo" class="form-select">
-            <option value="">Todos los tipos</option>
+</div>
+
+<form method="get" class="row g-2 mb-4 align-items-end">
+    <!-- Filtros de búsqueda -->
+    <div class="col-md-2">
+        <label class="form-label small text-muted mb-0">N° Cotización</label>
+        <input type="text" name="numero" class="form-control form-control-sm" value="{{ request.GET.numero }}">
+    </div>
+    <div class="col-md-2">
+        <label class="form-label small text-muted mb-0">Cliente</label>
+        <input type="text" name="cliente" class="form-control form-control-sm" value="{{ request.GET.cliente }}">
+    </div>
+    <div class="col-md-2">
+        <label class="form-label small text-muted mb-0">Desde</label>
+        <input type="date" name="fecha_inicio" class="form-control form-control-sm" value="{{ request.GET.fecha_inicio }}">
+    </div>
+    <div class="col-md-2">
+        <label class="form-label small text-muted mb-0">Hasta</label>
+        <input type="date" name="fecha_fin" class="form-control form-control-sm" value="{{ request.GET.fecha_fin }}">
+    </div>
+    <div class="col-md-2">
+        <label class="form-label small text-muted mb-0">Tipo</label>
+        <select name="tipo" class="form-select form-select-sm">
+            <option value="">Todos</option>
             <option value="cliente_final" {% if request.GET.tipo == 'cliente_final' %}selected{% endif %}>Cliente Final</option>
             <option value="partner" {% if request.GET.tipo == 'partner' %}selected{% endif %}>Partner</option>
             <option value="telco" {% if request.GET.tipo == 'telco' %}selected{% endif %}>Telco</option>
         </select>
     </div>
-    <div class="col-auto">
-        <button class="btn btn-outline-secondary">Filtrar</button>
+    <div class="col-md-2 d-flex gap-1">
+        <button class="btn btn-primary btn-sm w-50">Filtrar</button>
+        <a href="{% url 'historial' %}" class="btn btn-outline-secondary btn-sm w-50">Limpiar</a>
     </div>
 </form>
 
-<div class="card">
+<div class="card shadow-sm">
     <table class="table table-hover mb-0">
         <thead class="table-light">
             <tr>
-            <th>Número</th>
-            <th>Cliente</th>
-            <th>País</th>
-            <th>Tipo</th>
-            <th>Fecha</th>
-            <th>Estado</th>
-            <th></th>
+                <th>Número</th>
+                <th>Creado por</th> <!-- NUEVA COLUMNA -->
+                <th>Cliente</th>
+                <th>País</th>
+                <th>Tipo</th>
+                <th>Fecha</th>
+                <th>Estado</th>
+                <th></th>
             </tr>
         </thead>
         <tbody>
             {% for c in cotizaciones %}
             <tr>
-                <td>{{ c.numero }}</td>
+                <td><strong>{{ c.numero }}</strong></td>
+                <td>
+                    <div class="d-flex align-items-center gap-1">
+                        <div class="bg-secondary text-white rounded-circle d-flex justify-content-center align-items-center" style="width: 24px; height: 24px; font-size: 10px;">
+                            {{ c.creado_por.username|first|upper|default:"?" }}
+                        </div>
+                        {{ c.creado_por.username|default:"N/A" }}
+                    </div>
+                </td>
                 <td>{{ c.cliente.nombre_empresa }}</td>
                 <td>{{ c.cliente.pais.pais|default:"-" }}</td>
                 <td>{{ c.get_tipo_display }}</td>
-                <td>{{ c.fecha|date:"d/m/Y H:i" }}</td>
-                <td><span class="badge bg-secondary">{{ c.get_estado_display }}</span></td>
+                <td>{{ c.fecha|date:"d/m/Y" }}</td>
+                <td>
+                    {% if c.estado == 'aprobada' %}
+                        <span class="badge bg-success">{{ c.get_estado_display }}</span>
+                    {% elif c.estado == 'rechazada' %}
+                        <span class="badge bg-danger">{{ c.get_estado_display }}</span>
+                    {% else %}
+                        <span class="badge bg-secondary">{{ c.get_estado_display }}</span>
+                    {% endif %}
+                </td>
                 <td>
                     <a href="{% url 'detalle_cotizacion' c.pk %}" class="btn btn-sm btn-outline-primary">Ver</a>
-                    <a href="{% url 'editar_cotizacion' c.pk %}" class="btn btn-sm btn-outline-secondary">Editar</a>
+                    
+                    {% if c.estado == 'rechazada' or c.nivel_aprobacion == 'nivel_3' %}
+                        <a href="{% url 'editar_cotizacion' c.pk %}" class="btn btn-sm btn-outline-secondary">Editar</a>
+                    {% else %}
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="alert('🔒 Esta cotización está en proceso de aprobación.\n\nPara poder editarla, el Jefe debe Rechazarla o aprobarla definitivamente.');">🔒</button>
+                    {% endif %}
                 </td>
             </tr>
             {% empty %}
-            <tr><td colspan="7" class="text-center text-muted py-4">Todavía no hay cotizaciones.</td></tr>
+            <tr>
+                <td colspan="8" class="text-center text-muted py-4">
+                    {% if es_aprobador %}
+                        No hay cotizaciones que coincidan con los filtros.
+                    {% else %}
+                        Aún no has creado ninguna cotización.
+                    {% endif %}
+                </td>
+            </tr>
             {% endfor %}
         </tbody>
     </table>

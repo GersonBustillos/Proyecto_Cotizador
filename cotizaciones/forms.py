@@ -1,6 +1,7 @@
 from django import forms
 from django.forms import inlineformset_factory
 from .models import Cotizacion, ItemCotizacion
+from django_otp.forms import OTPAuthenticationForm
 
 
 class CotizacionForm(forms.ModelForm):
@@ -45,3 +46,16 @@ ItemCotizacionFormSet = inlineformset_factory(
     validate_min=False,
     min_num=0
 )
+
+from django.contrib.auth.forms import AuthenticationForm
+from django import forms
+
+class SimpleOTPAuthenticationForm(AuthenticationForm):
+    # Este campo es opcional y lo usaremos después para el paso 2
+    otp_token = forms.CharField(required=False, widget=forms.HiddenInput)
+    
+    # Forzamos a que el formulario no exija el token OTP
+    def __init__(self, request=None, *args, **kwargs):
+        super().__init__(request=request, *args, **kwargs)
+        if 'otp_token' in self.fields:
+            self.fields['otp_token'].required = False

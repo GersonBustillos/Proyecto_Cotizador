@@ -1,14 +1,7 @@
 from django.urls import path
-from django.contrib.auth import views as auth_views
 from . import views
 
 urlpatterns = [
-    path('login/', auth_views.LoginView.as_view(
-        template_name='cotizaciones/login.html',
-        redirect_authenticated_user=True
-    ), name='login'),
-    path('logout/', auth_views.LogoutView.as_view(next_page='login'), name='logout'),
-
     path('nueva/', views.nueva_cotizacion, name='nueva_cotizacion'),
     path('historial/', views.historial, name='historial'),
     path('<int:pk>/', views.detalle_cotizacion, name='detalle_cotizacion'),
@@ -19,4 +12,7 @@ urlpatterns = [
     path('<int:pk>/enviar/', views.enviar_cotizacion, name='enviar_cotizacion'),
     path('<int:pk>/aprobar/', views.aprobar_cotizacion, name='aprobar_cotizacion'),
     path('bandeja/', views.bandeja_aprobaciones, name='bandeja_aprobaciones'),
+    path('dashboard/', views.dashboard, name='dashboard'),
+    path('<int:pk>/duplicar/', views.duplicar_cotizacion, name='duplicar_cotizacion'),
+    path('exportar/', views.exportar_excel, name='exportar_excel'),
 ]

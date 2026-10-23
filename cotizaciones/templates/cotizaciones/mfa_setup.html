@@ -1,0 +1,30 @@
+{% extends 'cotizaciones/base.html' %}
+{% block title %}Configurar MFA{% endblock %}
+{% block content %}
+<div class="container" style="max-width: 500px;">
+    <div class="card p-4 shadow-sm text-center">
+        <h4>Seguridad Adicional (MFA)</h4>
+        <p class="text-muted">Escanea este código con Google Authenticator o Authy.</p>
+        
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+
+        <img src="data:image/png;base64,{{ qr_image }}" alt="QR MFA" class="img-fluid mb-3" style="max-width: 250px;">
+        
+        <p class="small text-muted">Si no puedes escanear, ingresa esta clave manualmente:</p>
+        <code class="d-block bg-light p-2 mb-3">{{ secret_key }}</code>
+
+        <form method="post">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label class="form-label">Código de 6 dígitos</label>
+                <input type="text" name="token" class="form-control text-center" maxlength="6" required autofocus>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">Verificar y Activar</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

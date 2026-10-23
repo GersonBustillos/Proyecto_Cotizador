@@ -1,0 +1,139 @@
+{% extends 'cotizaciones/base.html' %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="mb-0">📊 Resumen de Cotizaciones</h3>
+    <a href="{% url 'nueva_cotizacion' %}" class="btn btn-primary">+ Nueva Cotización</a>
+</div>
+
+<!-- NUEVO: Filtro de Fechas -->
+<div class="card p-3 mb-4 shadow-sm">
+    <form method="get" class="row g-3 align-items-end">
+        <div class="col-md-4">
+            <label class="form-label text-muted small fw-bold">Desde:</label>
+            <input type="date" name="fecha_inicio" class="form-control" value="{{ fecha_inicio }}">
+        </div>
+        <div class="col-md-4">
+            <label class="form-label text-muted small fw-bold">Hasta:</label>
+            <input type="date" name="fecha_fin" class="form-control" value="{{ fecha_fin }}">
+        </div>
+        <div class="col-md-4 d-flex gap-2">
+            <button type="submit" class="btn btn-primary w-100">Filtrar</button>
+            <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary" title="Limpiar Filtros">↻</a>
+        </div>
+    </form>
+</div>
+
+<!-- Tarjetas de Estadísticas -->
+<div class="row g-4 mb-4">
+    <div class="col-md-4">
+        <div class="card p-3 shadow-sm border-start border-primary border-4 h-100">
+            <h6 class="text-muted">Cotizaciones Totales</h6>
+            <h2 class="mb-0">{{ total_cotizaciones }}</h2>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card p-3 shadow-sm border-start border-success border-4 h-100">
+            <h6 class="text-muted">Aprobadas</h6>
+            <h2 class="mb-0 text-success">{{ aprobadas }}</h2>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card p-3 shadow-sm border-start border-warning border-4 h-100">
+            <h6 class="text-muted">Pendientes de Aprobación</h6>
+            <h2 class="mb-0 text-warning">{{ pendientes }}</h2>
+        </div>
+    </div>
+</div>
+
+<!-- Gráficos -->
+<div class="row g-4 mb-4">
+    <div class="col-md-5">
+        <div class="card p-4 shadow-sm h-100">
+            <h5 class="mb-3">Estado de Cotizaciones</h5>
+            <canvas id="graficoEstados" style="max-height: 250px;"></canvas>
+        </div>
+    </div>
+    <div class="col-md-7">
+        <div class="card p-4 shadow-sm h-100">
+            <h5 class="mb-3">Top 5 Clientes (Este mes)</h5>
+            <canvas id="graficoClientes" style="max-height: 250px;"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Últimas Cotizaciones -->
+<div class="card shadow-sm">
+    <div class="card-header bg-white">
+        <h5 class="mb-0">Últimas Cotizaciones</h5>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Número</th>
+                    <th>Cliente</th>
+                    <th>Fecha</th>
+                    <th>Estado</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in ultimas_cotizaciones %}
+                <tr>
+                    <td><strong>{{ c.numero }}</strong></td>
+                    <td>{{ c.cliente.nombre_empresa }}</td>
+                    <td>{{ c.fecha|date:"d/m/Y H:i" }}</td>
+                    <td><span class="badge bg-secondary">{{ c.get_estado_display }}</span></td>
+                    <td><a href="{% url 'detalle_cotizacion' c.pk %}" class="btn btn-sm btn-outline-primary">Ver</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Scripts de Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // 1. Gráfico de Dona (Estados)
+    const ctxEstados = document.getElementById('graficoEstados').getContext('2d');
+    new Chart(ctxEstados, {
+        type: 'doughnut',
+        data: {
+            labels: ['Borrador', 'Enviada', 'Aprobada', 'Rechazada'],
+            datasets: [{
+                data: {{ estados_data|safe }},
+                backgroundColor: ['#6c757d', '#0dcaf0', '#198754', '#dc3545'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            plugins: { legend: { position: 'bottom' } },
+            cutout: '70%'
+        }
+    });
+
+    // 2. Gráfico de Barras (Top Clientes)
+    const ctxClientes = document.getElementById('graficoClientes').getContext('2d');
+    new Chart(ctxClientes, {
+        type: 'bar',
+        data: {
+            labels: {{ top_clientes_labels|safe }},
+            datasets: [{
+                label: 'Cantidad de Cotizaciones',
+                data: {{ top_clientes_data|safe }},
+                backgroundColor: '#0d6efd',
+                borderRadius: 6
+            }]
+        },
+        options: {
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, 
+                    ticks: { stepSize: 1, precision: 0 } }
+            }
+        }
+    });
+</script>
+{% endblock %}

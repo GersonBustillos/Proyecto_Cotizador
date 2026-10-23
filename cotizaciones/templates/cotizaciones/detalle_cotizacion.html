@@ -82,6 +82,9 @@
             <small>🔒 El envío al cliente se habilitará cuando esté aprobada definitivamente (Nivel 3).</small>
         </div>
     {% endif %}
+
+    <!-- NUEVO BOTÓN DUPLICAR -->
+    <a href="{% url 'duplicar_cotizacion' cotizacion.pk %}" class="btn btn-info text-white" onclick="return confirm('¿Seguro que deseas crear una copia de esta cotización?');">📋 Duplicar</a>
     
     <a href="{% url 'historial' %}" class="btn btn-outline-secondary ms-auto">← Volver al historial</a>
 </div>

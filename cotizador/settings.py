@@ -38,6 +38,9 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'cotizaciones',
+    'django_otp',
+    'django_otp.plugins.otp_totp',
+    'django_otp.plugins.otp_static',
 ]
 
 MIDDLEWARE = [
@@ -46,8 +49,10 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django_otp.middleware.OTPMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'cotizaciones.middleware.ForceMFAMiddleware', 
 ]
 
 ROOT_URLCONF = 'cotizador.urls'
@@ -127,5 +132,16 @@ STATICFILES_DIRS = [BASE_DIR / 'cotizaciones' / 'static']
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 DEFAULT_FROM_EMAIL = 'cotizaciones@nuvomsp.com'  # Cambia esto por tu correo real
 LOGIN_URL = 'login'
-LOGIN_REDIRECT_URL = 'historial'
+LOGIN_REDIRECT_URL = 'dashboard'
 LOGOUT_REDIRECT_URL = 'login'
+
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'unique-snowflake',
+    }
+}
+
+# Configuración de Login para MFA
+LOGIN_URL = 'login'  # Redirige a la ruta que definiremos en urls.py
+LOGIN_REDIRECT_URL = 'dashboard' # A dónde va después de loguearse

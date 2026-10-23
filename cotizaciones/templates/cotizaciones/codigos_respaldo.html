@@ -1,0 +1,35 @@
+{% extends 'cotizaciones/base.html' %}
+{% block title %}Códigos de Respaldo{% endblock %}
+{% block content %}
+<div class="container" style="max-width: 600px;">
+    <div class="card p-4 shadow-sm">
+        <h4 class="mb-3 text-center">🔑 Códigos de Respaldo</h4>
+        
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+
+        {% if generados %}
+            <div class="alert alert-warning">
+                <strong>¡Importante!</strong> Guarda estos códigos en un lugar seguro. No se volverán a mostrar.
+            </div>
+            <div class="bg-light p-3 rounded border mb-3 text-center">
+                <div class="row row-cols-2 g-2 font-monospace">
+                    {% for codigo in codigos %}
+                        <div class="col"><span class="badge bg-dark p-2 w-100 fs-6">{{ codigo }}</span></div>
+                    {% endfor %}
+                </div>
+            </div>
+            <a href="{% url 'dashboard' %}" class="btn btn-primary w-100">He guardado mis códigos, continuar</a>
+        {% else %}
+            <p class="text-muted text-center">Si pierdes tu teléfono, necesitarás estos códigos para recuperar el acceso a tu cuenta.</p>
+            <form method="post">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger w-100">Generar 10 Códigos Nuevos</button>
+            </form>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
